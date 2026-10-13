@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMI Health & Progression Tracker — OIBSIP</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+  <!-- Top Navbar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-heart-pulse text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            BMI Health Tracker
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">OIBSIP Task 2</span>
+          </h1>
+          <p class="text-xs text-slate-500">Oasis Infobyte Internship · Python & SQLite Analytics</p>
+        </div>
+      </div>
+
+      <!-- Profile Selector Header Controls -->
+      <div class="flex items-center gap-3">
+        <div class="relative min-w-[220px]">
+          <select id="userSelect" onchange="onUserChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-2.5 font-medium transition cursor-pointer">
+            <option value="" disabled selected>Loading profiles...</option>
+          </select>
+        </div>
+        <button onclick="openNewUserModal()" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-blue-600/30">
+          <i class="fa-solid fa-user-plus text-xs"></i>
+          <span>New Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner for ID Separation -->
+  <div id="userNotification" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-center justify-between text-blue-800 text-sm">
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-circle-check text-blue-600 text-base"></i>
+        <span id="userNotificationText">User profile active.</span>
+      </div>
+      <button onclick="closeNotification()" class="text-blue-500 hover:text-blue-700 text-xs font-bold px-2 py-1">✕</button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Top Grid: Calculator (Left) & Results Card (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Input Form (5 cols) -->
+      <div class="lg:col-span-5 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-blue-600"></i>
+              Calculate BMI
+            </h2>
+            <span id="activeUserBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">No User Selected</span>
+          </div>
+
+          <form id="bmiForm" onsubmit="calculateBMI(event)" class="space-y-4">
+            <!-- Weight Input -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="weight">Weight (kg)</label>
+              <div class="relative">
+                <input type="number" step="0.1" id="weight" required placeholder="e.g. 72.5" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                <span class="absolute right-3.5 top-2.5 text-xs text-slate-400 font-semibold">kg</span>
+              </div>
+            </div>
+
+            <!-- Height Input with Unit Selector -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600" for="height">Height</label>
+                <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs">
+                  <button type="button" onclick="setHeightUnit('meters')" id="btnMeters" class="px-2.5 py-1 rounded-md font-semibold bg-white shadow-xs text-blue-600 transition">Meters</button>
+                  <button type="button" onclick="setHeightUnit('cm')" id="btnCm" class="px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 transition">Centimeters</button>
+                </div>
+              </div>
+              <div class="relative">
+                <input type="number" step="0.01" id="height" required placeholder="e.g. 1.75" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                <span id="heightUnitLabel" class="absolute right-3.5 top-2.5 text-xs text-slate-400 font-semibold">m</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-2 flex gap-3">
+              <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-bolt text-sm"></i>
+                <span>Calculate & Save</span>
+              </button>
+              <button type="button" onclick="resetForm()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-xl transition">
+                Reset
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Quick Info Guide -->
+        <div class="mt-6 pt-4 border-t border-slate-100">
+          <p class="text-xs text-slate-500 leading-relaxed flex items-start gap-2">
+            <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+            Formula: <strong>BMI = Weight (kg) / Height (m)²</strong>. Every calculation is automatically linked to your active profile in SQLite.
+          </p>
+        </div>
+      </div>
+
+      <!-- Right Column: Result Card (7 cols) -->
+      <div class="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+              Health Evaluation & Feedback
+            </h2>
+            <span id="categoryBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">Awaiting Input</span>
+          </div>
+
+          <!-- BMI Score Display -->
+          <div class="bg-slate-50 rounded-2xl p-6 text-center border border-slate-100 mb-6">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Your Calculated BMI</p>
+            <div id="bmiDisplay" class="text-5xl font-black text-slate-800 tracking-tight my-2">--.--</div>
+            <p id="descriptionText" class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              Enter your measurements on the left to see your health classification and tips.
+            </p>
+          </div>
+
+          <!-- WHO Standard Categories Reference Bar -->
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold text-slate-500">
+              <span>Underweight (&lt;18.5)</span>
+              <span>Normal (18.5–24.9)</span>
+              <span>Overweight (25–29.9)</span>
+              <span>Obese (≥30)</span>
+            </div>
+            <div class="h-3.5 w-full rounded-full bg-slate-100 flex overflow-hidden p-0.5 border border-slate-200">
+              <div class="w-1/4 h-full bg-blue-500 rounded-l-full" title="Underweight"></div>
+              <div class="w-1/4 h-full bg-emerald-500" title="Normal"></div>
+              <div class="w-1/4 h-full bg-amber-500" title="Overweight"></div>
+              <div class="w-1/4 h-full bg-rose-500 rounded-r-full" title="Obese"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Details -->
+        <div id="metricDetails" class="hidden grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100 text-center">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div class="text-xs text-slate-500">Recorded Weight</div>
+            <div id="metricWeight" class="text-sm font-bold text-slate-800 mt-0.5">-- kg</div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div class="text-xs text-slate-500">Recorded Height</div>
+            <div id="metricHeight" class="text-sm font-bold text-slate-800 mt-0.5">-- m</div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div class="text-xs text-slate-500">Ideal Range</div>
+            <div id="metricIdeal" class="text-sm font-bold text-emerald-600 mt-0.5">18.5 – 24.9</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Middle: Visual Progression Line Chart (Chart.js) -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-blue-600"></i>
+            BMI Progression Trend Over Time
+          </h2>
+          <p id="chartSubheader" class="text-xs text-slate-500">Historical trajectory and comparison against WHO benchmark bands</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-semibold">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span> Underweight
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Normal
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span> Overweight
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span> Obese
+          </span>
+        </div>
+      </div>
+      <div class="relative h-72 w-full">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bottom: Historical Records Table -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-700"></i>
+            Personal Measurement History
+          </h2>
+          <p class="text-xs text-slate-500">Isolated database records stored in SQLite</p>
+        </div>
+        <button onclick="loadUserRecords()" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Refresh Records</span>
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-50 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="py-3 px-4">Record ID</th>
+              <th class="py-3 px-4">Timestamp</th>
+              <th class="py-3 px-4">Weight (kg)</th>
+              <th class="py-3 px-4">Height (m)</th>
+              <th class="py-3 px-4">Calculated BMI</th>
+              <th class="py-3 px-4">Category</th>
+              <th class="py-3 px-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-slate-400 font-medium">No records available for this profile.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal: Create New Profile -->
+  <div id="newUserModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 transform transition-all">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-user-plus"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Create New User Profile</h3>
+            <p class="text-xs text-slate-500">Auto-assigns a unique ID to separate records</p>
+          </div>
+        </div>
+        <button onclick="closeNewUserModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+      </div>
+
+      <form onsubmit="handleCreateUser(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="newUserName">Full Name</label>
+          <input type="text" id="newUserName" required placeholder="e.g. Jawad Ahmad" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium">
+          <p class="text-xs text-slate-400 mt-1">If another user has the same name, a distinct User ID will still isolate your data.</p>
+        </div>
+
+        <div class="flex gap-2.5 pt-2">
+          <button type="button" onclick="closeNewUserModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-sm transition">Cancel</button>
+          <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm shadow-md shadow-blue-500/20 transition">Create Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    let activeUserId = null;
+    let heightUnit = 'meters';
+    let chartInstance = null;
+
+    const CATEGORY_COLORS = {
+      'Underweight': { bg: 'bg-blue-100', text: 'text-blue-700', hex: '#3b82f6', border: '#2563eb' },
+      'Normal': { bg: 'bg-emerald-100', text: 'text-emerald-700', hex: '#10b981', border: '#059669' },
+      'Overweight': { bg: 'bg-amber-100', text: 'text-amber-700', hex: '#f59e0b', border: '#d97706' },
+      'Obese': { bg: 'bg-rose-100', text: 'text-rose-700', hex: '#ef4444', border: '#dc2626' }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      loadUsers();
+    });
+
+    function setHeightUnit(unit) {
+      heightUnit = unit;
+      const btnMeters = document.getElementById('btnMeters');
+      const btnCm = document.getElementById('btnCm');
+      const heightInput = document.getElementById('height');
+      const heightLabel = document.getElementById('heightUnitLabel');
+
+      if (unit === 'meters') {
+        btnMeters.className = "px-2.5 py-1 rounded-md font-semibold bg-white shadow-xs text-blue-600 transition";
+        btnCm.className = "px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 transition";
+        heightInput.placeholder = "e.g. 1.75";
+        heightInput.step = "0.01";
+        heightLabel.innerText = "m";
+      } else {
+        btnCm.className = "px-2.5 py-1 rounded-md font-semibold bg-white shadow-xs text-blue-600 transition";
+        btnMeters.className = "px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 transition";
+        heightInput.placeholder = "e.g. 175";
+        heightInput.step = "1";
+        heightLabel.innerText = "cm";
+      }
+    }
+
+    async function loadUsers(selectUserId = null) {
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const select = document.getElementById('userSelect');
+        select.innerHTML = '';
+
+        if (users.length === 0) {
+          select.innerHTML = '<option value="" disabled selected>No profiles found. Create one!</option>';
+          activeUserId = null;
+          document.getElementById('activeUserBadge').innerText = "No Profile";
+          updateTable([]);
+          updateChart([]);
+          return;
+        }
+
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.display;
+          select.appendChild(opt);
+        });
+
+        if (selectUserId && users.some(u => u.id === selectUserId)) {
+          select.value = selectUserId;
+        } else {
+          select.value = users[0].id;
+        }
+
+        onUserChange();
+      } catch (err) {
+        console.error("Error loading users:", err);
+      }
+    }
+
+    function onUserChange() {
+      const select = document.getElementById('userSelect');
+      activeUserId = parseInt(select.value);
+      const selectedOption = select.options[select.selectedIndex];
+      
+      document.getElementById('activeUserBadge').innerText = selectedOption ? selectedOption.text : "No Profile";
+      document.getElementById('chartSubheader').innerText = `Historical trajectory for ${selectedOption ? selectedOption.text : 'selected profile'}`;
+
+      loadUserRecords();
+    }
+
+    async function loadUserRecords() {
+      if (!activeUserId) return;
+      try {
+        const res = await fetch(`/api/records/${activeUserId}`);
+        const records = await res.json();
+        updateTable(records);
+        updateChart(records);
+      } catch (err) {
+        console.error("Error fetching records:", err);
+      }
+    }
+
+    function updateTable(records) {
+      const tbody = document.getElementById('recordsTableBody');
+      tbody.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 font-medium">No records found for this profile yet. Calculate your BMI above!</td></tr>`;
+        return;
+      }
+
+      records.forEach(r => {
+        const style = CATEGORY_COLORS[r.category] || { bg: 'bg-slate-100', text: 'text-slate-700' };
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/70 transition";
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono text-xs text-slate-400">#${r.id}</td>
+          <td class="py-3 px-4 font-medium text-slate-700">${r.recorded_at}</td>
+          <td class="py-3 px-4 font-semibold text-slate-900">${r.weight} kg</td>
+          <td class="py-3 px-4 font-semibold text-slate-900">${r.height} m</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${r.bmi}</td>
+          <td class="py-3 px-4">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${style.bg} ${style.text}">
+              ${r.category}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteRecord(${r.id})" class="text-slate-400 hover:text-rose-600 transition p-1 text-xs" title="Delete Entry">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function calculateBMI(e) {
+      e.preventDefault();
+      if (!activeUserId) {
+        alert("Please create or select a user profile first!");
+        return;
+      }
+
+      const weight = parseFloat(document.getElementById('weight').value);
+      const height = parseFloat(document.getElementById('height').value);
+
+      if (isNaN(weight) || isNaN(height) || weight <= 0 || height <= 0) {
+        alert("Please enter valid positive numbers for weight and height.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: activeUserId,
+            weight: weight,
+            height: height,
+            height_unit: heightUnit
+          })
+        });
+
+        const data = await res.json();
+        if (data.error) {
+          alert("Error: " + data.error);
+          return;
+        }
+
+        // Update Result Cards
+        const style = CATEGORY_COLORS[data.category] || { bg: 'bg-slate-100', text: 'text-slate-700', hex: '#64748b' };
+        const bmiDisplay = document.getElementById('bmiDisplay');
+        bmiDisplay.innerText = data.bmi.toFixed(2);
+        bmiDisplay.style.color = style.hex;
+
+        const badge = document.getElementById('categoryBadge');
+        badge.innerText = data.category.toUpperCase();
+        badge.className = `text-xs font-bold px-3 py-1 rounded-full ${style.bg} ${style.text}`;
+
+        document.getElementById('descriptionText').innerText = data.description;
+
+        // Metric details card
+        document.getElementById('metricDetails').classList.remove('hidden');
+        document.getElementById('metricWeight').innerText = `${data.weight} kg`;
+        document.getElementById('metricHeight').innerText = `${data.height_m} m`;
+
+        // Reload data
+        loadUserRecords();
+      } catch (err) {
+        console.error("Calculation failed:", err);
+      }
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm(`Are you sure you want to delete record #${id}?`)) return;
+      try {
+        await fetch(`/api/records/${id}`, { method: 'DELETE' });
+        loadUserRecords();
+      } catch (err) {
+        console.error("Delete failed:", err);
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('bmiForm').reset();
+    }
+
+    function openNewUserModal() {
+      document.getElementById('newUserModal').classList.remove('hidden');
+      document.getElementById('newUserName').focus();
+    }
+
+    function closeNewUserModal() {
+      document.getElementById('newUserModal').classList.add('hidden');
+      document.getElementById('newUserName').value = '';
+    }
+
+    async function handleCreateUser(e) {
+      e.preventDefault();
+      const name = document.getElementById('newUserName').value.trim();
+      if (!name) return;
+
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name })
+        });
+        const user = await res.json();
+        closeNewUserModal();
+
+        // Show banner notification emphasizing User ID separation
+        const banner = document.getElementById('userNotification');
+        document.getElementById('userNotificationText').innerHTML = `
+          New profile created: <strong>${user.name}</strong> with <strong>User ID: ${user.id}</strong>! Records are isolated.
+        `;
+        banner.classList.remove('hidden');
+
+        loadUsers(user.id);
+      } catch (err) {
+        alert("Failed to create profile: " + err);
+      }
+    }
+
+    function closeNotification() {
+      document.getElementById('userNotification').classList.add('hidden');
+    }
+
+    // Chart.js Configuration
+    function initChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Your BMI',
+            data: [],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderWidth: 3,
+            pointBackgroundColor: '#1d4ed8',
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `BMI: ${ctx.parsed.y}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 14,
+              max: 36,
+              grid: { color: 'rgba(226, 232, 240, 0.6)' },
+              ticks: { stepSize: 5 }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(records) {
+      if (!chartInstance) return;
+
+      if (!records || records.length === 0) {
+        chartInstance.data.labels = [];
+        chartInstance.data.datasets[0].data = [];
+        chartInstance.update();
+        return;
+      }
+
+      const labels = records.map(r => r.recorded_at.split(' ')[0]);
+      const data = records.map(r => r.bmi);
+
+      chartInstance.data.labels = labels;
+      chartInstance.data.datasets[0].data = data;
+      chartInstance.update();
+    }
+  </script>
+</body>
+</html>

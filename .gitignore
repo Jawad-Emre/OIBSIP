@@ -1,0 +1,29 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local Databases (optional: avoid committing personal records)
+*.db
+*.sqlite3
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated
+.DS_Store
+Thumbs.db

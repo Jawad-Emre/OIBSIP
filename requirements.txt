@@ -1,0 +1,6 @@
+# Master requirements for all OIBSIP Python tasks
+matplotlib>=3.7.0
+flask>=3.0.0
+pyperclip>=1.8.2
+requests>=2.31.0
+pillow>=10.0.0
