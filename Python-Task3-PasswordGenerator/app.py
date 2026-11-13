@@ -6,7 +6,7 @@ Author: Jawad Ahmad
 Tech Stack:
 - Python 3.x
 - secrets module (cryptographically secure)
-- tkinter & ttk (native GUI)
+- tkinter & ttk (native GUI with full scroll support)
 - pyperclip (clipboard integration)
 
 Features:
@@ -14,9 +14,10 @@ Features:
 - Complexity checkboxes (Uppercase, Lowercase, Numbers, Symbols)
 - Option to exclude ambiguous characters (0, O, l, 1, I)
 - Guaranteed inclusion of at least 1 character from each selected set
-- Dynamic visual strength indicator (Progress bar + color badge)
+- Dynamic Information Entropy visual strength meter (Canvas bar + color badge)
 - "Copy to Clipboard" button + automatic clipboard copy on generation
 - Session history displaying the last 5 passwords (in-memory only, not saved to disk)
+- Full vertical scroll support for both standard and maximized displays
 """
 
 import tkinter as tk
@@ -29,8 +30,8 @@ class PasswordGeneratorApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Random Password Generator — OIBSIP Task 3")
-        self.geometry("780x720")
-        self.minsize(720, 680)
+        self.geometry("820x760")
+        self.minsize(740, 600)
         self.configure(bg="#0F172A")  # Dark modern slate background
 
         # State Variables
@@ -55,9 +56,6 @@ class PasswordGeneratorApp(tk.Tk):
         # Base styling
         self.style.configure(".", background="#0F172A", foreground="#F8FAFC", font=("Segoe UI", 10))
         
-        # Card Frames
-        self.style.configure("Card.TFrame", background="#1E293B", relief="flat")
-
         # Labels
         self.style.configure("Title.TLabel", font=("Segoe UI", 16, "bold"), foreground="#FFFFFF", background="#1E293B")
         self.style.configure("SubTitle.TLabel", font=("Segoe UI", 9), foreground="#94A3B8", background="#1E293B")
@@ -77,8 +75,8 @@ class PasswordGeneratorApp(tk.Tk):
         self.style.configure("Secondary.TButton", font=("Segoe UI", 9, "bold"), background="#334155", foreground="#F8FAFC")
         self.style.map("Secondary.TButton", background=[("active", "#475569")])
 
-        # Progressbar
-        self.style.configure("Strength.Horizontal.TProgressbar", troughcolor="#334155", thickness=10)
+        # Scrollbars
+        self.style.configure("Vertical.TScrollbar", background="#1E293B", troughcolor="#0F172A", arrowcolor="#38BDF8")
 
         # Treeview for Session History
         self.style.configure("Treeview", 
@@ -91,7 +89,7 @@ class PasswordGeneratorApp(tk.Tk):
         self.style.map("Treeview", background=[("selected", "#2563EB")])
 
     def _build_ui(self):
-        # 1. Top Header Banner
+        # 1. Top Header Banner (Fixed)
         header = tk.Frame(self, bg="#1E293B", padx=20, pady=14, highlightthickness=1, highlightbackground="#334155")
         header.pack(fill="x", side="top")
 
@@ -100,24 +98,48 @@ class PasswordGeneratorApp(tk.Tk):
         sub_lbl = ttk.Label(header, text="Oasis Infobyte Internship Program · Python Programming Track · Task 3 (Advanced Tier)", style="SubTitle.TLabel")
         sub_lbl.pack(anchor="w")
 
-        # 2. Main Scrollable/Padded Body
-        container = tk.Frame(self, bg="#0F172A", padx=20, pady=15)
-        container.pack(fill="both", expand=True)
+        # 2. Scrollable Viewport (Canvas + Scrollbar)
+        main_frame = tk.Frame(self, bg="#0F172A")
+        main_frame.pack(fill="both", expand=True)
+
+        self.canvas = tk.Canvas(main_frame, bg="#0F172A", highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
+        
+        self.scrollable_content = tk.Frame(self.canvas, bg="#0F172A", padx=20, pady=15)
+        self.scrollable_content.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_content, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Make content stretch with canvas width
+        self.canvas.bind(
+            "<Configure>",
+            lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width)
+        )
+
+        # Mouse wheel bindings
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
 
         # --- Section 1: Generated Password Display Card ---
-        display_card = tk.Frame(container, bg="#1E293B", padx=18, pady=16, highlightthickness=1, highlightbackground="#334155")
+        display_card = tk.Frame(self.scrollable_content, bg="#1E293B", padx=18, pady=16, highlightthickness=1, highlightbackground="#334155")
         display_card.pack(fill="x", pady=(0, 15))
 
         lbl_row = tk.Frame(display_card, bg="#1E293B")
-        lbl_row.pack(fill="x", mb=6 if hasattr(tk, 'mb') else None)
+        lbl_row.pack(fill="x")
         ttk.Label(lbl_row, text="Generated Password", style="Section.TLabel").pack(side="left")
 
-        self.copy_status_badge = tk.Label(display_card, text="", font=("Segoe UI", 9, "bold"), bg="#1E293B", fg="#10B981")
-        self.copy_status_badge.pack(anchor="e")
+        self.copy_status_badge = tk.Label(lbl_row, text="", font=("Segoe UI", 9, "bold"), bg="#1E293B", fg="#10B981")
+        self.copy_status_badge.pack(side="right")
 
         # Password Entry / Output Box
         output_row = tk.Frame(display_card, bg="#1E293B")
-        output_row.pack(fill="x", pady=(4, 10))
+        output_row.pack(fill="x", pady=(8, 12))
 
         self.password_entry = tk.Entry(output_row, font=("Consolas", 15, "bold"), bg="#0F172A", fg="#38BDF8",
                                        insertbackground="#38BDF8", relief="flat", highlightthickness=1,
@@ -130,19 +152,20 @@ class PasswordGeneratorApp(tk.Tk):
         regen_btn = ttk.Button(output_row, text="🔄 Regenerate", style="Secondary.TButton", command=self.generate)
         regen_btn.pack(side="right", ipady=4, ipadx=4, padx=(0, 6))
 
-        # Strength Bar & Feedback
+        # Dynamic Canvas Strength Bar & Feedback
         strength_frame = tk.Frame(display_card, bg="#1E293B")
-        strength_frame.pack(fill="x", pady=(4, 2))
+        strength_frame.pack(fill="x", pady=(2, 2))
 
-        self.strength_bar = ttk.Progressbar(strength_frame, style="Strength.Horizontal.TProgressbar", orient="horizontal", maximum=100)
-        self.strength_bar.pack(side="left", fill="x", expand=True, padx=(0, 15))
+        # Canvas-drawn progress bar for sharp dynamic colors
+        self.strength_canvas = tk.Canvas(strength_frame, height=14, bg="#334155", highlightthickness=0)
+        self.strength_canvas.pack(side="left", fill="x", expand=True, padx=(0, 15))
 
-        self.strength_badge = tk.Label(strength_frame, text="Strong", font=("Segoe UI", 9, "bold"),
-                                       bg="#10B981", fg="#FFFFFF", padx=10, pady=3, relief="flat")
+        self.strength_badge = tk.Label(strength_frame, text="Strong (75%)", font=("Segoe UI", 9, "bold"),
+                                       bg="#22C55E", fg="#FFFFFF", padx=10, pady=3, relief="flat", width=18)
         self.strength_badge.pack(side="right")
 
         # --- Section 2: Complexity & Configuration Controls ---
-        config_card = tk.Frame(container, bg="#1E293B", padx=18, pady=16, highlightthickness=1, highlightbackground="#334155")
+        config_card = tk.Frame(self.scrollable_content, bg="#1E293B", padx=18, pady=16, highlightthickness=1, highlightbackground="#334155")
         config_card.pack(fill="x", pady=(0, 15))
 
         ttk.Label(config_card, text="Password Customization & Complexity", style="Section.TLabel").pack(anchor="w", pady=(0, 12))
@@ -186,40 +209,55 @@ class PasswordGeneratorApp(tk.Tk):
         gen_btn.pack(fill="x", ipady=8, pady=(4, 0))
 
         # --- Section 3: In-Memory Session History (Last 5 Passwords) ---
-        history_card = tk.Frame(container, bg="#1E293B", padx=18, pady=14, highlightthickness=1, highlightbackground="#334155")
-        history_card.pack(fill="both", expand=True)
+        history_card = tk.Frame(self.scrollable_content, bg="#1E293B", padx=18, pady=16, highlightthickness=1, highlightbackground="#334155")
+        history_card.pack(fill="x", pady=(0, 10))
 
         history_header = tk.Frame(history_card, bg="#1E293B")
-        history_header.pack(fill="x", pady=(0, 8))
+        history_header.pack(fill="x", pady=(0, 10))
 
         ttk.Label(history_header, text="Recent Session History (Last 5 Passwords — In-Memory Only)", style="Section.TLabel").pack(side="left")
 
-        clear_hist_btn = ttk.Button(history_header, text="Clear History", style="Secondary.TButton", command=self._clear_history)
+        clear_hist_btn = ttk.Button(history_header, text="🗑️ Clear History", style="Secondary.TButton", command=self._clear_history)
         clear_hist_btn.pack(side="right")
 
-        # Treeview Table
+        # History Treeview with dedicated scrollbar
+        tree_container = tk.Frame(history_card, bg="#1E293B")
+        tree_container.pack(fill="x", pady=(0, 8))
+
         cols = ("time", "password", "length", "strength")
-        self.history_tree = ttk.Treeview(history_card, columns=cols, show="headings", height=5, selectmode="browse")
+        self.history_tree = ttk.Treeview(tree_container, columns=cols, show="headings", height=5, selectmode="browse")
 
         self.history_tree.heading("time", text="Time")
         self.history_tree.heading("password", text="Password (Click to Select / Copy)")
         self.history_tree.heading("length", text="Length")
-        self.history_tree.heading("strength", text="Strength")
+        self.history_tree.heading("strength", text="Strength Rating")
 
         self.history_tree.column("time", width=80, anchor="center")
         self.history_tree.column("password", width=380, anchor="w")
         self.history_tree.column("length", width=70, anchor="center")
-        self.history_tree.column("strength", width=100, anchor="center")
+        self.history_tree.column("strength", width=120, anchor="center")
 
-        self.history_tree.pack(fill="both", expand=True, side="left")
+        tree_scroll = ttk.Scrollbar(tree_container, orient="vertical", command=self.history_tree.yview)
+        self.history_tree.configure(yscrollcommand=tree_scroll.set)
+
+        self.history_tree.pack(side="left", fill="x", expand=True)
+        tree_scroll.pack(side="right", fill="y")
         self.history_tree.bind("<Double-1>", self._on_history_double_click)
 
-        # Quick Copy Selected from History
-        hist_btn_frame = tk.Frame(history_card, bg="#1E293B")
-        hist_btn_frame.pack(side="right", fill="y", padx=(8, 0))
+        # Quick Copy Selected Bar
+        hist_btn_bar = tk.Frame(history_card, bg="#1E293B")
+        hist_btn_bar.pack(fill="x")
 
-        copy_hist_btn = ttk.Button(hist_btn_frame, text="📋 Copy\nSelected", style="Secondary.TButton", command=self._copy_selected_history)
-        copy_hist_btn.pack(side="top", pady=2, ipady=6)
+        copy_hist_btn = ttk.Button(hist_btn_bar, text="📋 Copy Selected Password", style="Secondary.TButton", command=self._copy_selected_history)
+        copy_hist_btn.pack(side="left", ipady=4, ipadx=8)
+
+        hint_lbl = tk.Label(hist_btn_bar, text="Double-click any entry above to quickly copy it.", font=("Segoe UI", 9, "italic"), bg="#1E293B", fg="#64748B")
+        hint_lbl.pack(side="left", padx=(12, 0))
+
+    def _on_mousewheel(self, event):
+        # Allow scrolling only when scrollbar is active
+        if self.canvas.winfo_height() < self.scrollable_content.winfo_height():
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def _on_slider_change(self, val):
         try:
@@ -234,6 +272,21 @@ class PasswordGeneratorApp(tk.Tk):
                 self.length_slider.set(val)
         except (ValueError, tk.TclError):
             pass
+
+    def _draw_strength_bar(self, percentage: int, color_hex: str):
+        """Draws the dynamic strength bar onto the canvas."""
+        self.update_idletasks()
+        w = self.strength_canvas.winfo_width()
+        h = self.strength_canvas.winfo_height()
+        
+        self.strength_canvas.delete("all")
+        # Draw background trough
+        self.strength_canvas.create_rectangle(0, 0, w, h, fill="#334155", width=0)
+        
+        # Calculate filled width
+        filled_w = int((percentage / 100.0) * w)
+        if filled_w > 0:
+            self.strength_canvas.create_rectangle(0, 0, filled_w, h, fill=color_hex, width=0)
 
     def generate(self):
         try:
@@ -256,8 +309,8 @@ class PasswordGeneratorApp(tk.Tk):
             self.password_entry.delete(0, tk.END)
             self.password_entry.insert(0, pwd)
 
-            # Update Strength Visuals
-            self.strength_bar["value"] = strength_score
+            # Update Dynamic Strength Visuals
+            self._draw_strength_bar(strength_score, color_hex)
             self.strength_badge.config(text=f"{strength_label.upper()} ({strength_score}%)", bg=color_hex)
 
             # Automatic Copy if enabled
@@ -282,7 +335,6 @@ class PasswordGeneratorApp(tk.Tk):
 
     def _show_copy_feedback(self, text: str):
         self.copy_status_badge.config(text=text)
-        # Clear after 2.5 seconds
         self.after(2500, lambda: self.copy_status_badge.config(text=""))
 
     def _update_history_table(self):
@@ -309,7 +361,7 @@ class PasswordGeneratorApp(tk.Tk):
         values = self.history_tree.item(selected[0], "values")
         pwd = values[1]
         pyperclip.copy(pwd)
-        self._show_copy_feedback(f"✓ Copied password from history!")
+        self._show_copy_feedback("✓ Copied password from history!")
 
     def _clear_history(self):
         generator.session_history.clear()

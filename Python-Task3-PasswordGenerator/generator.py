@@ -8,12 +8,13 @@ Features:
 - Complexity options: Uppercase, Lowercase, Digits, Symbols
 - Strict security rule: Guaranteed inclusion of at least 1 character from each selected set
 - Optional exclusion of ambiguous characters (0, O, l, 1, I)
-- Dynamic password strength evaluation (entropy & character diversity)
+- Dynamic password strength evaluation using Information Entropy (NIST Standard)
 - In-memory session history tracking (last 5 passwords, not persisted to disk)
 """
 
 import string
 import secrets
+import math
 from collections import deque
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
@@ -52,42 +53,49 @@ session_history = SessionHistory(maxlen=5)
 
 def evaluate_strength(password: str) -> Tuple[str, int, str]:
     """
-    Evaluates password strength based on length and character diversity.
+    Evaluates password strength dynamically using Information Entropy (bits):
+    Entropy = Length * log2(Pool Size)
+    
+    Scales smoothly from 25% (Weak) up to 100% (Very Strong) as length and
+    character diversity increase, so the strength meter changes dynamically!
+    
     Returns: (category, score_percentage, hex_color)
     """
     length = len(password)
-    has_upper = any(c in UPPERCASE_CHARS for c in password)
-    has_lower = any(c in LOWERCASE_CHARS for c in password)
-    has_digit = any(c in DIGIT_CHARS for c in password)
-    has_symbol = any(c in SYMBOL_CHARS for c in password)
+    if length == 0:
+        return "Weak", 0, "#EF4444"
 
-    char_types_count = sum([has_upper, has_lower, has_digit, has_symbol])
+    # Calculate active character pool size
+    pool_size = 0
+    if any(c in UPPERCASE_CHARS for c in password):
+        pool_size += 26
+    if any(c in LOWERCASE_CHARS for c in password):
+        pool_size += 26
+    if any(c in DIGIT_CHARS for c in password):
+        pool_size += 10
+    if any(c in SYMBOL_CHARS for c in password):
+        pool_size += len(SYMBOL_CHARS)
 
-    # Score calculation
-    score = 0
-    # Length points (up to 50)
-    if length >= 16:
-        score += 50
-    elif length >= 12:
-        score += 40
-    elif length >= 10:
-        score += 30
-    elif length >= 8:
-        score += 20
-    else:
-        score += 10
+    if pool_size == 0:
+        pool_size = 1
 
-    # Diversity points (up to 50)
-    score += (char_types_count * 12.5)
+    # Information entropy in bits
+    entropy_bits = length * math.log2(pool_size)
 
-    score = min(int(score), 100)
+    # Scale entropy to a 0 - 100% score (128 bits is industry standard maximum):
+    # < 45%  -> Weak (e.g. length 8 with 2 types ~ 30-40%)
+    # 45-69% -> Medium (e.g. length 10-12 with 3 types ~ 45-65%)
+    # 70-85% -> Strong (e.g. length 14-16 with 4 types ~ 70-85%)
+    # > 85%  -> Very Strong (e.g. length 18+ with 4 types ~ 90-100%)
+    score = int((entropy_bits / 128.0) * 100)
+    score = max(20, min(score, 100))  # Clamp between 20% and 100%
 
-    # Classification
-    if score >= 90:
+    # Classification & Color Cues
+    if score >= 85:
         return "Very Strong", score, "#10B981"  # Emerald
     elif score >= 70:
         return "Strong", score, "#22C55E"       # Green
-    elif score >= 50:
+    elif score >= 45:
         return "Medium", score, "#F59E0B"       # Amber / Orange
     else:
         return "Weak", score, "#EF4444"         # Red
@@ -162,7 +170,7 @@ def generate_password(
     rng.shuffle(password_chars)
     password = "".join(password_chars)
 
-    # Evaluate strength
+    # Evaluate dynamic strength
     strength_label, strength_score, color_hex = evaluate_strength(password)
 
     # Record in session history
