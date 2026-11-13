@@ -20,7 +20,7 @@ Every project is organized into its dedicated folder adhering strictly to the re
 | Task # | Project Folder | Level / Tier | Description | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Task 2** | [**`Python-Task2-BMICalculator`**](./Python-Task2-BMICalculator) | Advanced Tier | Dual-interface BMI Health Tracker with Modern Web Dashboard (Flask + Chart.js) & Desktop GUI (Tkinter + Matplotlib) with SQLite multi-user ID separation. | ✅ Completed |
-| **Task 3** | `Python-Task3-PasswordGenerator` | Advanced Tier | Cryptographically secure random password generator with GUI controls & clipboard integration. | ⏳ In Progress |
+| **Task 3** | [**`Python-Task3-PasswordGenerator`**](./Python-Task3-PasswordGenerator) | Advanced Tier | Cryptographically secure desktop random password generator using Python's `secrets` module, Tkinter GUI, dynamic strength meter, and `pyperclip` clipboard integration. | ✅ Completed |
 | **Task 4** | `Python-Task4-WeatherApp` | Advanced Tier | Real-time weather dashboard with OpenWeatherMap API & condition forecasts. | ⏳ Upcoming |
 
 ---
@@ -58,4 +58,4 @@ pip install -r requirements.txt
 - **Repository Name:** `OIBSIP`
 - **Folder Structure:** `[TrackName]-[Level/Task]-[ProjectName]/`
 - **Documentation:** Every task folder includes a dedicated `README.md` with features, architecture, and running instructions.
-- **Data Persistence:** SQLite database with unique User ID separation.
+- **Data Persistence & Security:** SQLite database with unique User ID separation for Task 2, cryptographically secure `secrets` module & in-memory session history for Task 3.
