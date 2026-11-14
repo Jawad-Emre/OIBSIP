@@ -3,6 +3,10 @@
 venv/
 ENV/
 env/
+# Environment Secrets
+.env
+.env.local
+*.env
 
 # Python Cache
 __pycache__/
