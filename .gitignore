@@ -28,6 +28,12 @@ dist/
 *.swp
 *.swo
 
+# Video demo files (posted to LinkedIn)
+*.mp4
+*.mkv
+*.avi
+*.mov
+
 # OS Generated
 .DS_Store
 Thumbs.db

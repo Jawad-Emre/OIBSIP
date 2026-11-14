@@ -26,6 +26,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from PIL import Image, ImageTk
+from typing import Optional
 
 import weather_api
 
